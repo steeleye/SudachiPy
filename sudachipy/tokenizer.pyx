@@ -40,6 +40,9 @@ cdef void build_lattice_c(object tokenizer, object input_):
     cdef object lexicon = tokenizer._lexicon
     cdef list oov_provider_plugins = tokenizer._oov_provider_plugins
 
+    cdef int max_idx
+
+
     for i in range(len(bytes_)):
         if not input_.can_bow(i) or not lattice.has_previous_node(i):
             continue
@@ -52,7 +55,16 @@ cdef void build_lattice_c(object tokenizer, object input_):
 
             lex = lexicon.lexicons[word_id >> 28]
             idx = (0x0FFFFFFF & word_id) * 3 # 3 is ELEMENT_SIZE_AS_SHORT
-            left_id, right_id, cost = lex.word_params._array_view[idx:idx+3]
+
+            max_idx = len(lex.word_params._array_view)
+            if idx + 2 >= max_idx:
+                raise IndexError(f"Index {idx+2} out of bounds for array of size {max_idx}")
+            left_id = lex.word_params._array_view[idx]
+            right_id = lex.word_params._array_view[idx + 1]
+            cost = lex.word_params._array_view[idx + 2]
+
+
+            #left_id, right_id, cost = lex.word_params._array_view[idx:idx+3]
             n = LatticeNode(lexicon, left_id, right_id, cost, word_id)
 
             lattice.insert(i, end, n)
